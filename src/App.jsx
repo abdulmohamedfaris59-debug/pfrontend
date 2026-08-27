@@ -8,10 +8,10 @@ import beefImage from "./assets/beef.jpeg";
 import logoImage from "./assets/logo.jpg";
 
 // ==========================================
-// BACKEND URL
+// BACKEND API URL
 // ==========================================
 
-const API_URL = "https://pbackend-aill.onrender.com/api";
+const API_URL = "https://pbackend-k25g.onrender.com/api";
 
 // ==========================================
 // ADMIN
@@ -20,7 +20,23 @@ const API_URL = "https://pbackend-aill.onrender.com/api";
 const ADMIN_USERNAME = "Amrina";
 const ADMIN_PASSWORD = "Amrina1403";
 
+// ==========================================
+// AXIOS CONFIG
+// ==========================================
+
+const api = axios.create({
+  baseURL: API_URL,
+  timeout: 30000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
 function App() {
+  // ==========================================
+  // STATE
+  // ==========================================
+
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [activePage, setActivePage] = useState("home");
@@ -64,7 +80,7 @@ function App() {
   });
 
   // ==========================================
-  // LOAD PRODUCTS
+  // INITIAL LOAD
   // ==========================================
 
   useEffect(() => {
@@ -82,35 +98,46 @@ function App() {
   }, []);
 
   // ==========================================
-  // API FUNCTIONS
+  // FETCH PRODUCTS
   // ==========================================
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
-        `${API_URL}/products`
-      );
+      const response = await api.get("/products");
 
       setProducts(response.data.products || []);
     } catch (error) {
       console.error("Products error:", error);
-      alert("Unable to load products. Please try again.");
+
+      setProducts([]);
+
+      alert(
+        error.response?.data?.message ||
+          "Unable to load products. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // ==========================================
+  // FETCH ALL ORDERS
+  // ==========================================
+
   const fetchAllOrders = async () => {
     try {
-      const response = await axios.get(
-        `${API_URL}/orders`
-      );
+      const response = await api.get("/orders");
 
       setAllOrders(response.data.orders || []);
     } catch (error) {
       console.error("Orders error:", error);
+
+      alert(
+        error.response?.data?.message ||
+          "Unable to load orders"
+      );
     }
   };
 
@@ -133,14 +160,22 @@ function App() {
 
   const getProductImage = (product) => {
     const type = String(
-      product.image_url || ""
+      product.image_url || product.image || ""
     ).toLowerCase();
 
-    if (type.includes("mutton")) {
+    const name = String(product.name || "").toLowerCase();
+
+    if (
+      type.includes("mutton") ||
+      name.includes("mutton")
+    ) {
       return muttonImage;
     }
 
-    if (type.includes("beef")) {
+    if (
+      type.includes("beef") ||
+      name.includes("beef")
+    ) {
       return beefImage;
     }
 
@@ -148,16 +183,29 @@ function App() {
   };
 
   // ==========================================
-  // CART
+  // ADD TO CART
   // ==========================================
 
   const addToCart = (product) => {
+    if (Number(product.stock) <= 0) {
+      alert("This product is out of stock");
+      return;
+    }
+
     setCart((previousCart) => {
       const existingItem = previousCart.find(
         (item) => item.id === product.id
       );
 
       if (existingItem) {
+        if (
+          existingItem.quantity >=
+          Number(product.stock)
+        ) {
+          alert("Maximum stock reached");
+          return previousCart;
+        }
+
         return previousCart.map((item) =>
           item.id === product.id
             ? {
@@ -180,13 +228,18 @@ function App() {
     alert(`${product.name} added to cart`);
   };
 
+  // ==========================================
+  // INCREASE QUANTITY
+  // ==========================================
+
   const increaseQuantity = (id) => {
     setCart((previousCart) =>
       previousCart.map((item) => {
         if (item.id !== id) return item;
 
-        if (item.quantity >= item.stock) {
+        if (item.quantity >= Number(item.stock)) {
           alert("Maximum stock reached");
+
           return item;
         }
 
@@ -197,6 +250,10 @@ function App() {
       })
     );
   };
+
+  // ==========================================
+  // DECREASE QUANTITY
+  // ==========================================
 
   const decreaseQuantity = (id) => {
     setCart((previousCart) =>
@@ -213,6 +270,10 @@ function App() {
     );
   };
 
+  // ==========================================
+  // REMOVE ITEM
+  // ==========================================
+
   const removeItem = (id) => {
     setCart((previousCart) =>
       previousCart.filter(
@@ -220,6 +281,10 @@ function App() {
       )
     );
   };
+
+  // ==========================================
+  // CART TOTAL
+  // ==========================================
 
   const total = cart.reduce(
     (sum, item) =>
@@ -233,7 +298,7 @@ function App() {
   );
 
   // ==========================================
-  // CUSTOMER
+  // CUSTOMER CHANGE
   // ==========================================
 
   const handleCustomerChange = (event) => {
@@ -269,21 +334,18 @@ function App() {
     try {
       setPlacingOrder(true);
 
-      const response = await axios.post(
-        `${API_URL}/orders`,
-        {
-          customer: {
-            name: customer.name.trim(),
-            phone: customer.phone.trim(),
-            address: customer.address.trim(),
-          },
+      const response = await api.post("/orders", {
+        customer: {
+          name: customer.name.trim(),
+          phone: customer.phone.trim(),
+          address: customer.address.trim(),
+        },
 
-          items: cart.map((item) => ({
-            id: item.id,
-            quantity: item.quantity,
-          })),
-        }
-      );
+        items: cart.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+        })),
+      });
 
       if (response.data.success) {
         const completedOrder = response.data.order;
@@ -310,6 +372,8 @@ function App() {
         navigate("success");
       }
     } catch (error) {
+      console.error("Place order error:", error);
+
       alert(
         error.response?.data?.message ||
           "Failed to place order"
@@ -320,7 +384,7 @@ function App() {
   };
 
   // ==========================================
-  // MY ORDERS
+  // LOAD MY ORDERS
   // ==========================================
 
   const loadMyOrders = async () => {
@@ -330,15 +394,24 @@ function App() {
     }
 
     try {
-      const response = await axios.get(
-        `${API_URL}/orders/customer/${encodeURIComponent(
+      const response = await api.get(
+        `/orders/customer/${encodeURIComponent(
           orderPhone.trim()
         )}`
       );
 
       setMyOrders(response.data.orders || []);
+
+      if ((response.data.orders || []).length === 0) {
+        alert("No orders found for this phone number");
+      }
     } catch (error) {
-      alert("Failed to load orders");
+      console.error("My orders error:", error);
+
+      alert(
+        error.response?.data?.message ||
+          "Failed to load orders"
+      );
     }
   };
 
@@ -359,8 +432,15 @@ function App() {
       );
 
       setIsAdmin(true);
+
       setShowAdminLogin(false);
+
       setAdminError("");
+
+      setAdminCredentials({
+        username: "",
+        password: "",
+      });
 
       fetchAllOrders();
 
@@ -374,17 +454,22 @@ function App() {
     }
   };
 
+  // ==========================================
+  // ADMIN LOGOUT
+  // ==========================================
+
   const handleAdminLogout = () => {
     localStorage.removeItem("adminLoggedIn");
 
     setIsAdmin(false);
+
     setAllOrders([]);
 
     navigate("home");
   };
 
   // ==========================================
-  // ADD / EDIT PRODUCT
+  // OPEN ADD PRODUCT MODAL
   // ==========================================
 
   const openAddProductModal = () => {
@@ -396,23 +481,37 @@ function App() {
     });
 
     setEditingProduct(null);
+
     setIsEditing(false);
+
     setShowProductModal(true);
   };
+
+  // ==========================================
+  // OPEN EDIT PRODUCT MODAL
+  // ==========================================
 
   const openEditProductModal = (product) => {
     setProductForm({
-      name: product.name,
-      price: product.price,
-      stock: product.stock,
+      name: product.name || "",
+      price: product.price || "",
+      stock: product.stock || "",
       image_url:
-        product.image_url || "chicken",
+        product.image_url ||
+        product.image ||
+        "chicken",
     });
 
     setEditingProduct(product);
+
     setIsEditing(true);
+
     setShowProductModal(true);
   };
+
+  // ==========================================
+  // PRODUCT FORM CHANGE
+  // ==========================================
 
   const handleProductChange = (event) => {
     const { name, value } = event.target;
@@ -423,19 +522,29 @@ function App() {
     }));
   };
 
+  // ==========================================
+  // ADD PRODUCT
+  // ==========================================
+
   const handleAddProduct = async (event) => {
     event.preventDefault();
 
+    if (
+      !productForm.name.trim() ||
+      !productForm.price ||
+      !productForm.stock
+    ) {
+      alert("Please fill all product details");
+      return;
+    }
+
     try {
-      await axios.post(
-        `${API_URL}/products`,
-        {
-          name: productForm.name,
-          price: Number(productForm.price),
-          stock: Number(productForm.stock),
-          image_url: productForm.image_url,
-        }
-      );
+      await api.post("/products", {
+        name: productForm.name.trim(),
+        price: Number(productForm.price),
+        stock: Number(productForm.stock),
+        image_url: productForm.image_url,
+      });
 
       setShowProductModal(false);
 
@@ -443,6 +552,8 @@ function App() {
 
       alert("Product added successfully");
     } catch (error) {
+      console.error("Add product error:", error);
+
       alert(
         error.response?.data?.message ||
           "Failed to add product"
@@ -450,16 +561,20 @@ function App() {
     }
   };
 
+  // ==========================================
+  // UPDATE PRODUCT
+  // ==========================================
+
   const handleUpdateProduct = async (event) => {
     event.preventDefault();
 
     if (!editingProduct) return;
 
     try {
-      await axios.put(
-        `${API_URL}/products/${editingProduct.id}`,
+      await api.put(
+        `/products/${editingProduct.id}`,
         {
-          name: productForm.name,
+          name: productForm.name.trim(),
           price: Number(productForm.price),
           stock: Number(productForm.stock),
           image_url: productForm.image_url,
@@ -472,12 +587,18 @@ function App() {
 
       alert("Product updated successfully");
     } catch (error) {
+      console.error("Update product error:", error);
+
       alert(
         error.response?.data?.message ||
           "Failed to update product"
       );
     }
   };
+
+  // ==========================================
+  // DELETE PRODUCT
+  // ==========================================
 
   const handleDeleteProduct = async (
     productId
@@ -489,14 +610,22 @@ function App() {
     if (!confirmed) return;
 
     try {
-      await axios.delete(
-        `${API_URL}/products/${productId}`
+      await api.delete(
+        `/products/${productId}`
+      );
+
+      setCart((previousCart) =>
+        previousCart.filter(
+          (item) => item.id !== productId
+        )
       );
 
       await fetchProducts();
 
       alert("Product deleted successfully");
     } catch (error) {
+      console.error("Delete product error:", error);
+
       alert(
         error.response?.data?.message ||
           "Failed to delete product"
@@ -513,8 +642,8 @@ function App() {
     order_status
   ) => {
     try {
-      await axios.put(
-        `${API_URL}/orders/${orderId}/status`,
+      await api.put(
+        `/orders/${orderId}/status`,
         {
           order_status,
         }
@@ -533,6 +662,11 @@ function App() {
 
       alert("Order status updated");
     } catch (error) {
+      console.error(
+        "Order status error:",
+        error
+      );
+
       alert(
         error.response?.data?.message ||
           "Failed to update status"
@@ -565,7 +699,9 @@ function App() {
 
           <button
             className="primary-btn"
-            onClick={() => navigate("products")}
+            onClick={() =>
+              navigate("products")
+            }
           >
             Shop Now 🛒
           </button>
@@ -586,6 +722,10 @@ function App() {
         {loading ? (
           <div className="loading">
             Loading products...
+          </div>
+        ) : products.length === 0 ? (
+          <div className="orders-empty">
+            No products available.
           </div>
         ) : (
           <div className="product-grid">
@@ -611,13 +751,22 @@ function App() {
                     ).toFixed(2)}
                   </p>
 
+                  <p>
+                    Stock: {product.stock}
+                  </p>
+
                   <button
                     className="add-cart-btn"
+                    disabled={
+                      Number(product.stock) <= 0
+                    }
                     onClick={() =>
                       addToCart(product)
                     }
                   >
-                    🛒 Add to Cart
+                    {Number(product.stock) <= 0
+                      ? "Out of Stock"
+                      : "🛒 Add to Cart"}
                   </button>
                 </div>
               </div>
@@ -642,7 +791,9 @@ function App() {
 
           <button
             className="primary-btn"
-            onClick={() => navigate("home")}
+            onClick={() =>
+              navigate("home")
+            }
           >
             Continue Shopping
           </button>
@@ -718,11 +869,13 @@ function App() {
 
             <div className="summary-row">
               <span>Items</span>
+
               <span>{totalItems}</span>
             </div>
 
             <div className="summary-row">
               <span>Delivery</span>
+
               <span>Free</span>
             </div>
 
@@ -749,7 +902,7 @@ function App() {
   );
 
   // ==========================================
-  // CHECKOUT
+  // CHECKOUT PAGE
   // ==========================================
 
   const renderCheckoutPage = () => {
@@ -790,9 +943,8 @@ function App() {
                 type="text"
                 name="name"
                 value={customer.name}
-                onChange={
-                  handleCustomerChange
-                }
+                onChange={handleCustomerChange}
+                placeholder="Enter your name"
                 required
               />
 
@@ -802,9 +954,8 @@ function App() {
                 type="tel"
                 name="phone"
                 value={customer.phone}
-                onChange={
-                  handleCustomerChange
-                }
+                onChange={handleCustomerChange}
+                placeholder="Enter your phone number"
                 required
               />
 
@@ -815,9 +966,8 @@ function App() {
               <textarea
                 name="address"
                 value={customer.address}
-                onChange={
-                  handleCustomerChange
-                }
+                onChange={handleCustomerChange}
+                placeholder="Enter your full delivery address"
                 rows="5"
                 required
               />
@@ -849,7 +999,7 @@ function App() {
   };
 
   // ==========================================
-  // SUCCESS
+  // SUCCESS PAGE
   // ==========================================
 
   const renderSuccessPage = () => {
@@ -900,43 +1050,53 @@ function App() {
           </p>
         </div>
 
-        <div className="success-order-card">
-          <h3>Customer Details</h3>
+        {orderSuccess.customer && (
+          <div className="success-order-card">
+            <h3>Customer Details</h3>
 
-          <p>
-            <strong>Name:</strong>{" "}
-            {orderSuccess.customer.name}
-          </p>
+            <p>
+              <strong>Name:</strong>{" "}
+              {orderSuccess.customer.name}
+            </p>
 
-          <p>
-            <strong>Phone:</strong>{" "}
-            {orderSuccess.customer.phone}
-          </p>
+            <p>
+              <strong>Phone:</strong>{" "}
+              {orderSuccess.customer.phone}
+            </p>
 
-          <p>
-            <strong>Address:</strong>{" "}
-            {orderSuccess.customer.address}
-          </p>
-        </div>
+            <p>
+              <strong>Address:</strong>{" "}
+              {orderSuccess.customer.address}
+            </p>
+          </div>
+        )}
 
         <div className="success-order-card">
           <h3>Ordered Products</h3>
 
-          {orderSuccess.items.map(
-            (item) => (
+          {(orderSuccess.items || []).map(
+            (item, index) => (
               <div
                 className="mini-item"
-                key={item.productId}
+                key={
+                  item.productId ||
+                  item.id ||
+                  index
+                }
               >
                 <span>
-                  {item.productName} ×{" "}
-                  {item.quantity}
+                  {item.productName ||
+                    item.product_name}{" "}
+                  × {item.quantity}
                 </span>
 
                 <strong>
                   ₹
                   {Number(
-                    item.subtotal
+                    item.subtotal ||
+                      item.price *
+                        item.quantity ||
+                      0
                   ).toFixed(2)}
                 </strong>
               </div>
@@ -949,7 +1109,7 @@ function App() {
             <strong>
               ₹
               {Number(
-                orderSuccess.total_amount
+                orderSuccess.total_amount || 0
               ).toFixed(2)}
             </strong>
           </div>
@@ -979,7 +1139,7 @@ function App() {
   };
 
   // ==========================================
-  // MY ORDERS
+  // MY ORDERS PAGE
   // ==========================================
 
   const renderOrdersPage = () => (
@@ -1004,8 +1164,8 @@ function App() {
       {myOrders.length === 0 ? (
         <div className="orders-empty">
           <p>
-            Enter your phone number to view
-            your orders.
+            Enter your phone number and click
+            Find Orders.
           </p>
         </div>
       ) : (
@@ -1019,20 +1179,26 @@ function App() {
                 {order.order_number}
               </h3>
 
-              {order.items.map((item) => (
-                <p
-                  key={item.productId}
-                >
-                  {item.product_name ||
-                    item.productName}{" "}
-                  × {item.quantity}
-                </p>
-              ))}
+              {(order.items || []).map(
+                (item, index) => (
+                  <p
+                    key={
+                      item.productId ||
+                      item.id ||
+                      index
+                    }
+                  >
+                    {item.product_name ||
+                      item.productName}{" "}
+                    × {item.quantity}
+                  </p>
+                )
+              )}
 
               <strong>
                 Total: ₹
                 {Number(
-                  order.total_amount
+                  order.total_amount || 0
                 ).toFixed(2)}
               </strong>
 
@@ -1176,9 +1342,7 @@ function App() {
             <input
               name="name"
               value={productForm.name}
-              onChange={
-                handleProductChange
-              }
+              onChange={handleProductChange}
               required
             />
 
@@ -1187,10 +1351,10 @@ function App() {
             <input
               type="number"
               name="price"
+              min="0"
+              step="0.01"
               value={productForm.price}
-              onChange={
-                handleProductChange
-              }
+              onChange={handleProductChange}
               required
             />
 
@@ -1199,10 +1363,9 @@ function App() {
             <input
               type="number"
               name="stock"
+              min="0"
               value={productForm.stock}
-              onChange={
-                handleProductChange
-              }
+              onChange={handleProductChange}
               required
             />
 
@@ -1213,9 +1376,7 @@ function App() {
               value={
                 productForm.image_url
               }
-              onChange={
-                handleProductChange
-              }
+              onChange={handleProductChange}
             >
               <option value="chicken">
                 Chicken
@@ -1245,7 +1406,7 @@ function App() {
   };
 
   // ==========================================
-  // ADMIN PRODUCTS
+  // ADMIN PRODUCTS PAGE
   // ==========================================
 
   const renderAdminProductsPage = () => {
@@ -1334,7 +1495,7 @@ function App() {
   };
 
   // ==========================================
-  // ADMIN ORDERS
+  // ADMIN PAGE
   // ==========================================
 
   const renderAdminPage = () => {
@@ -1402,19 +1563,28 @@ function App() {
                 </h3>
 
                 <p>
+                  Customer:{" "}
                   {order.customer_name}
                 </p>
 
-                <p>{order.phone}</p>
+                <p>
+                  Phone: {order.phone}
+                </p>
 
-                <p>{order.address}</p>
+                <p>
+                  Address: {order.address}
+                </p>
 
                 <strong>
                   ₹
                   {Number(
-                    order.total_amount
+                    order.total_amount || 0
                   ).toFixed(2)}
                 </strong>
+
+                <br />
+
+                <br />
 
                 <select
                   value={
@@ -1535,10 +1705,8 @@ function App() {
       </header>
 
       <main>
-        {activePage === "home" &&
-          renderHomePage()}
-
-        {activePage === "products" &&
+        {(activePage === "home" ||
+          activePage === "products") &&
           renderHomePage()}
 
         {activePage === "cart" &&
