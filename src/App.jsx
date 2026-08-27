@@ -1495,7 +1495,7 @@ function App() {
   };
 
   // ==========================================
-  // ADMIN PAGE
+  // ADMIN PAGE (UPDATED WITH PRODUCTS LIST)
   // ==========================================
 
   const renderAdminPage = () => {
@@ -1563,20 +1563,38 @@ function App() {
                 </h3>
 
                 <p>
-                  Customer:{" "}
+                  <strong>Customer:</strong>{" "}
                   {order.customer_name}
                 </p>
 
                 <p>
-                  Phone: {order.phone}
+                  <strong>Phone:</strong> {order.phone}
                 </p>
 
                 <p>
-                  Address: {order.address}
+                  <strong>Address:</strong> {order.address}
                 </p>
 
+                {/* ========================================== */}
+                {/* ORDERED PRODUCTS - NEW SECTION */}
+                {/* ========================================== */}
+                <div className="order-products">
+                  <p><strong>📦 Products Ordered:</strong></p>
+                  <ul>
+                    {(order.items || []).map((item, index) => (
+                      <li key={item.productId || index}>
+                        {item.product_name || item.productName} 
+                        × {item.quantity} 
+                        = ₹{Number(item.subtotal || item.price * item.quantity || 0).toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <br />
+
                 <strong>
-                  ₹
+                  Total: ₹
                   {Number(
                     order.total_amount || 0
                   ).toFixed(2)}

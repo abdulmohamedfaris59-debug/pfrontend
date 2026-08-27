@@ -857,6 +857,54 @@ main {
 }
 
 /* ==========================================
+   ORDER PRODUCTS LIST
+   ========================================== */
+
+.order-products {
+  margin: 8px 0;
+  padding: 10px 14px;
+  background: #fdfaf6;
+  border-radius: 8px;
+  border-left: 3px solid #e8b86d;
+}
+
+.order-products p {
+  font-weight: 600;
+  color: #4a2a12;
+  margin-bottom: 4px;
+}
+
+.order-products ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.order-products ul li {
+  padding: 2px 0;
+  font-size: 0.95rem;
+  color: #4a3a2a;
+  border-bottom: 1px dashed #f0e6da;
+}
+
+.order-products ul li:last-child {
+  border-bottom: none;
+}
+
+
+/* Responsive */
+@media (max-width: 768px) {
+  .order-products {
+    padding: 8px 10px;
+  }
+  
+  .order-products ul li {
+    font-size: 0.85rem;
+  }
+}
+
+
+/* ==========================================
    MODALS
    ========================================== */
 
