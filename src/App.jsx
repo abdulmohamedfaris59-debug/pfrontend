@@ -7,7 +7,7 @@ import muttonImage from "./assets/mutton.jpeg";
 import beefImage from "./assets/beef.jpeg";
 import logoImage from "./assets/logo.jpg";
 
-// ✅ FIXED: Added /api to the URL
+// ✅ CORRECT: API URL with /api
 const API_URL = "https://pbackend-aill.onrender.com/api";
 
 function App() {
@@ -88,7 +88,7 @@ function App() {
       const response = await axios.get(`${API_URL}/products`);
       setProducts(response.data.products);
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching products:", error);
       alert("Unable to connect to backend. Make sure the backend is running.");
     } finally {
       setLoading(false);
