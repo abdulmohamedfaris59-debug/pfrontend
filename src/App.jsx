@@ -7,7 +7,7 @@ import muttonImage from "./assets/mutton.jpeg";
 import beefImage from "./assets/beef.jpeg";
 import logoImage from "./assets/logo.jpg";
 
-const API_URL = "http://localhost:5001/api";
+const API_URL = "https://pbackend-aill.onrender.com/api";
 
 function App() {
   const [products, setProducts] =
